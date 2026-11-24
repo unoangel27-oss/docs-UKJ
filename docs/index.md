@@ -11,9 +11,9 @@ subparameters, routes/worlds, operators and `p_p` quantization.
 
 ## Sections
 
-- [UKJ + Cabrita Specification](spec/index.md): identity, files, hierarchy and routes, operators, `p_p` quantization, runtime, decisions and pending.
+- [UKJ + Cabrita Specification](spec-index.md): identity, files, hierarchy and routes, operators, `p_p` quantization, runtime, decisions and pending.
 - [UKJ v1 Format (implementation)](formato-ukj-v1.md): container bytes, checksums, `.subs`, CLI and real results.
-- [Phase plan](plan/fases.md): Phase 0 (prototype), Phase 1 (iterations), Phase 2 (maturity).
+- [Phase plan](fases.md): Phase 0 (prototype), Phase 1 (iterations), Phase 2 (maturity).
 
 ## Status
 

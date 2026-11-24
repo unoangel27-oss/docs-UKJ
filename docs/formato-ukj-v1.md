@@ -1,7 +1,7 @@
 # UKJ v1 Format — implementation
 
 > Technical implementation document of Phase 0 (ISS-6 and ISS-7).
-> The functional specification lives in [`spec/ukj-spec-v1.md`](spec/ukj-spec-v1.md).
+> The functional specification lives in [`ukj-spec-v1.md`](ukj-spec-v1.md).
 > This document describes the bytes, not the intentions.
 
 ## 1. `.ukj` Container

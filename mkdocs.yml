@@ -7,6 +7,8 @@ site_author: Issiax
 
 theme:
   name: material
+  logo: assets/logo.png
+  favicon: assets/favicon.png
   features:
     - content.code.copy
     - content.tooltips
@@ -88,16 +90,16 @@ markdown_extensions:
 nav:
   - Home: index.md
   - Specification:
-      - Introduction: spec/index.md
+      - Introduction: spec-index.md
       - UKJ v1 Format (implementation): formato-ukj-v1.md
-      - UKJ v1 Specification: spec/ukj-spec-v1.md
-      - Identity: spec/identidad.md
-      - Files: spec/archivos.md
-      - Hierarchy and routes: spec/jerarquia.md
-      - Operators: spec/operadores.md
-      - Quantization `p_p`: spec/cuantizacion.md
-      - Cabrita Runtime: spec/runtime.md
-      - Decisions: spec/decisiones.md
-      - Pending: spec/pendientes.md
+      - UKJ v1 Specification: ukj-spec-v1.md
+      - Identity: identidad.md
+      - Files: archivos.md
+      - Hierarchy and routes: jerarquia.md
+      - Operators: operadores.md
+      - Quantization `p_p`: cuantizacion.md
+      - Cabrita Runtime: runtime.md
+      - Decisions: decisiones.md
+      - Pending: pendientes.md
   - Plan:
-      - Phases: plan/fases.md
+      - Phases: fases.md
