@@ -7,8 +7,8 @@ site_author: Issiax
 
 theme:
   name: material
-  logo: assets/logo.png
-  favicon: assets/favicon.png
+  logo: assets/logo-cabrita.png
+  favicon: assets/logo-ukj.png
   features:
     - content.code.copy
     - content.tooltips
