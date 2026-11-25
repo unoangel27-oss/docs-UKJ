@@ -26,7 +26,7 @@ Decisions taken (the 21 blanks + pending).
 | D52 | Metadata: `.ukj` header (see §4) |
 | D53 | `p_p` in routes: **Yes**, overrides subtree |
 | D54 | Spec: drafted `p1_p`, **user approves**, review before publishing |
-| D55 | Above `p8_p`: F1.2 experiment (see §4) |
+| D55 | Above `p8_p`: experimental by cost; no quality loss up to `p12_p` (F1.2) |
 | M4 | Schema: **Yes**: mandatory minimum header |
 | M5 | Owner: Spec → published docs; implementation separate; layout neutral |
 | M6 | Tic threshold: defaults in spec (2/s, 20/s), calibratable by Cabrita |

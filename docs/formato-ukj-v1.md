@@ -1,7 +1,7 @@
 # UKJ v1 Format — implementation
 
 > Technical implementation document of Phase 0 (ISS-6 and ISS-7).
-> The functional specification lives in [`ukj-spec-v1.md`](ukj-spec-v1.md).
+> The functional specification lives in [`spec/ukj-spec-v1.md`](ukj-spec-v1.md).
 > This document describes the bytes, not the intentions.
 
 ## 1. `.ukj` Container
@@ -224,7 +224,9 @@ Three layers are validated:
 
 In addition, the header is validated structurally: unique tensors, offsets within the payload and non-overlapping, contiguous subparameters that sum `nbytes`, coherent density, routes that cover all tensors exactly once, operators with valid name and default density.
 
-A truncated file, with wrong magic, with altered header or payload is rejected with a concrete message; it never loads halfway. `cabrita inspect` validates header and trailer by default; `--deep` adds the payload.
+A truncated file, with wrong magic, with altered header or payload is rejected with a concrete message; it never loads halfway. `cabrita inspect` validates header and trailer by default; `--deep` adds the payload. `cabrita chat` verifies payload and trailer by default; `--no-verify-payload` skips it with an explicit warning.
+
+Small updates are written through a checkpoint: the previous file is copied to `<file>/checkpoints`, the new content goes to a temporary file, and the checkpoint is restored if validation fails. This applies to `.subs` repair, world restore and router retraining.
 
 ## 6. CLI
 
@@ -284,6 +286,36 @@ cargo build --release
   --tics-normal 2 --tics-anomalous 20 --log
 ./target/release/cabrita inspect ../out/olmoe-q2_k-p1_p.ukj --log
 
+# world taxonomy: backup, restore with rollback and light retraining
+./target/release/cabrita world backup --worlds ../worlds/olmoe.json
+./target/release/cabrita world restore --worlds ../worlds/olmoe.json \
+  --backup ../worlds/backups/olmoe-YYYYMMDDTHHMMSS.mmmZ.json
+./target/release/cabrita world retrain --worlds ../worlds/olmoe.json --eval --json
+
+# reproducible evaluation and OpenAI-compatible server
+./target/release/cabrita eval perplexity ../out/olmoe-q2_k-p1_p.ukj \
+  --text ../benchmarks/corpus.txt --ctx 512 --json
+./target/release/cabrita eval qa ../out/olmoe-q2_k-p1_p.ukj \
+  --data ../benchmarks/qa.jsonl --ctx 512 --json
+./target/release/cabrita serve ../out/olmoe-q2_k-p1_p.ukj \
+  --addr 127.0.0.1:8080 --ctx 512 --worlds ../worlds/olmoe.json
+
+# HTTPS with a local certificate
+./target/release/cabrita serve ../out/olmoe-q2_k-p1_p.ukj \
+  --addr 127.0.0.1:8443 --tls-cert cert.pem --tls-key key.pem
+
+# distribution
+bash scripts/package_linux.sh          # dist/Cabrita-<version>-x86_64.AppImage
+bash scripts/package_windows_cross.sh  # dist/cabrita.exe cross-built on Linux (mingw-w64)
+powershell -File scripts/package_windows.ps1  # dist/cabrita.exe native build on Windows
+
+# degradation experiment p1_p…p12_p (perplexity + QA)
+python3 scripts/run_degradation.py --base ../out/olmoe-q2_k-p1_p.ukj --ctx 512
+
+# full conversions p1_p…p8_p and payload comparison
+python3 scripts/check_full_conversions.py --gguf ../olmoe-q2_k.gguf \
+  --reference ../out/olmoe-q2_k-p1_p.ukj
+
 # Vulkan backend (CPU is still the default)
 ./target/release/cabrita vulkan --probe
 ./target/release/cabrita vulkan --selftest
@@ -291,7 +323,7 @@ cargo build --release
   --backend vulkan --vulkan-cache-mb 4096
 ```
 
-`--subs-dir` changes the model root (by default `~/.cabrita/models`). `cabrita verify --quick` omits the payload SHA-256. `cabrita chat` uses mmap and dequantizes per block: there is no full model copy in RAM. `chat` trains the router with `--worlds` (by default it looks for `worlds/olmoe.json` or `../worlds/olmoe.json`) and masks the experts of the chosen world; if the text does not exceed the threshold, it warns and uses the base model. `--world` forces a world; `--mask-all` and `--no-renorm` are diagnostics. `--tics` activates the tic engine and `--log` writes `<model>.ops.jsonl`; `inspect --log` shows it. `--backend vulkan` is explicit and `--vulkan-cache-mb` limits the GPU weight cache.
+`--subs-dir` changes the model root (by default `~/.cabrita/models`). `cabrita verify --quick` omits the payload SHA-256. `cabrita chat` uses mmap and dequantizes per block: there is no full model copy in RAM. `chat` trains the router with `--worlds` (by default it looks for `worlds/olmoe.json` or `../worlds/olmoe.json`) and masks the experts of the chosen world; if the text does not exceed the threshold, it warns and uses the base model. `--world` forces a world; `--mask-all` and `--no-renorm` are diagnostics. `--tics` activates the tic engine and `--log` writes `<model>.ops.jsonl`; `inspect --log` shows it. `--backend vulkan` is explicit and `--vulkan-cache-mb` limits the GPU weight cache. `cabrita world backup` copies the taxonomy with a SHA-256 manifest; `world restore` validates the backup and rolls back to `<worlds>/checkpoints` on failure; `world retrain` trains the linear router and writes `<worlds>.router.json`. `cabrita serve` exposes `/v1/models`, `/v1/chat/completions` and `/v1/completions` plus an embedded GUI at `/`; the GUI lists worlds, opens a world and deploys its expert ranges. HTTPS is enabled with `--tls-cert`/`--tls-key`, and `--api-key` protects `/v1/*`.
 
 ## 7. Real results (OLMoE q2_K)
 
@@ -332,6 +364,86 @@ RSS measured with `/usr/bin/time -v`; the old 1.88 GB figure does not reproduce 
 
 `p1_p`, `p3_p` and `p5_p` share the payload byte for byte; `pN_p` only changes the subparameter splitting, not the weights.
 
+### Densities `p1_p`…`p12_p`, degradation threshold (F1.2)
+
+Experiment of 2026-11-25 with `scripts/run_degradation.py`: every density is produced from the same `olmoe-q2_k-p1_p.ukj` (header-only rewrite, `converter/tools/resplit_density.py`), then evaluated with `cabrita eval perplexity` on `benchmarks/corpus.txt` (160 tokens) and `cabrita eval qa` on `benchmarks/qa.jsonl` (10 items), ctx 512, `p1_p` as baseline.
+
+!!! info "Resolution of these numbers"
+
+    Perplexity is computed over **160 tokens**; the corpus file is **798
+    bytes**. QA is computed over **10 questions**, so 80.0% means **8/10** and
+    **one answer moves QA by 10 percentage points** — exactly the width of the
+    ≥10% / −10 pp rule. Differences smaller than a step cannot be measured with
+    this suite.
+
+| Density | Subparameters | Perplexity | Δ vs `p1_p` | QA | Δ QA |
+|---|---:|---:|---:|---:|---:|
+| `p1_p` | 195 | 20.870 | +0.0% | 80.0% | +0.0 pp |
+| `p2_p` | 390 | 20.870 | +0.0% | 80.0% | +0.0 pp |
+| `p3_p` | 585 | 20.870 | +0.0% | 80.0% | +0.0 pp |
+| `p4_p` | 780 | 20.870 | +0.0% | 80.0% | +0.0 pp |
+| `p5_p` | 975 | 20.870 | +0.0% | 80.0% | +0.0 pp |
+| `p6_p` | 1170 | 20.870 | +0.0% | 80.0% | +0.0 pp |
+| `p7_p` | 1365 | 20.870 | +0.0% | 80.0% | +0.0 pp |
+| `p8_p` | 1560 | 20.870 | +0.0% | 80.0% | +0.0 pp |
+| `p9_p` | 1755 | 20.870 | +0.0% | 80.0% | +0.0 pp |
+| `p10_p` | 1950 | 20.870 | +0.0% | 80.0% | +0.0 pp |
+| `p11_p` | 2145 | 20.870 | +0.0% | 80.0% | +0.0 pp |
+| `p12_p` | 2340 | 20.870 | +0.0% | 80.0% | +0.0 pp |
+
+The twelve variants carry the same payload and the same weights: `p_p` only changes how each tensor is cut into subparameters. The measured consequence is that the quality cliff §4 was looking for does not exist up to `p12_p`; what grows is the cost — 195 subparameters per step, 2,340 in `p12_p`, and a bigger subparameter index in the header — with no gain in perplexity or QA. Hence the decision recorded in D55: `p8_p` stays the official ceiling and `p9_p`–`p12_p` remain experimental by cost, not by quality. The rule set in advance (a variant counts as degraded at ≥10% perplexity or ≤−10 QA points) never triggers, so there is no threshold density to publish.
+
+### Full conversions from the GGUF (`p1_p`…`p8_p`)
+
+`scripts/check_full_conversions.py` converts the real GGUF once per density (not a header rewrite), verifies each container and compares its payload SHA-256 with `p1_p`:
+
+| Density | File bytes | Payload bytes | Tensors | Payload SHA-256 | `cabrita verify` | Seconds |
+|---|---:|---:|---:|---|---:|---:|
+| `p1_p` | 2,562,220,570 | 2,560,980,992 | 195 | same | yes | 52 |
+| `p2_p` | 2,562,236,261 | 2,560,980,992 | 195 | same | yes | 51 |
+| `p3_p` | 2,562,251,808 | 2,560,980,992 | 195 | same | yes | 33 |
+| `p4_p` | 2,562,267,542 | 2,560,980,992 | 195 | same | yes | 33 |
+| `p5_p` | 2,562,283,024 | 2,560,980,992 | 195 | same | yes | 29 |
+| `p6_p` | 2,562,298,476 | 2,560,980,992 | 195 | same | yes | 30 |
+| `p7_p` | 2,562,313,731 | 2,560,980,992 | 195 | same | yes | 29 |
+| `p8_p` | 2,562,329,323 | 2,560,980,992 | 195 | same | yes | 30 |
+
+The eight containers are valid and share the payload `25e12a6e…e0acee02`; the file only grows with the subparameter index (+108,753 bytes from `p1_p` to `p8_p`). The source GGUF (2,562,763,232 bytes) lives outside the repository and is never committed.
+
+!!! note "Regenerated artifacts (M5): why `p1_p` has two byte counts"
+
+    This table reports `p1_p` = 2,562,220,570 bytes, while the `q*` table below
+    reports 2,562,220,548. Both are correct: `conversions` **regenerated** the
+    `.ukj` files from the GGUF with a header listing `p1_p`…`p12_p`, which is
+    **22 bytes longer** than the Phase 0 header (eight allowed densities). The
+    payload — and its SHA-256 — is identical in both. The original output
+    folders were deleted, so neither artifact is reproducible in place.
+    Quality: perplexity over **160 tokens**, QA over **10 questions** (80.0% =
+    8/10; one answer = 10 pp).
+
+`--continue-irregular` on the full model: the flag converts without error and reports `continued_tensors: 0` for OLMoE q2_K, because all 195 tensors always split into at least 12 valid subparameters. A `p12_p` file built this way loads and answers (`chat --prompt "Say hi" --max-tokens 2` → `"Hello"`, RSS 1.49 GB). The irregular path itself (tensors that cannot be split) is covered by the `tiny-olmoe` fixture: 5 norms of 16 B become 20 independent parameters of 4 B and the model chats with them.
+
+### Quality/performance table `q*` × `p_p`
+
+`converter/tools/bench_public.py` runs three fixed prompts (16 tokens, ctx 512) through `cabrita bench` and adds the same perplexity and QA suite; results in `benchmarks/results/q_star.{json,md}`.
+
+| Model | `q*` | `p_p` | tok/s | TTFT ms | Latency ms | RSS MB | Perplexity | QA |
+|---|---|---|---:|---:|---:|---:|---:|---:|
+| `olmoe-q2_k-p1_p.ukj` | q2_k | `p1_p` | 2.72 | 8301 | 14207 | 2124.3 | 20.870 | 80.0% |
+| `olmoe-q2_k-p3_p.ukj` | q2_k | `p3_p` | 2.67 | 9900 | 15918 | 2124.9 | 20.870 | 80.0% |
+| `olmoe-q2_k-p5_p.ukj` | q2_k | `p5_p` | 2.93 | 7704 | 13185 | 2123.8 | 20.870 | 80.0% |
+| `olmoe-q2_k-p8_p.ukj` | q2_k | `p8_p` | 2.61 | 8238 | 14362 | 2124.4 | 20.870 | 80.0% |
+
+!!! note "Resolution and regenerated artifacts"
+
+    Perplexity: **160 tokens**; QA: **10 questions**, so 80.0% = **8/10** and
+    one answer = **10 pp**. The `p1_p` measured here is the Phase 0 file
+    (2,562,220,548 bytes), 22 bytes smaller than the regenerated `p1_p` in the
+    conversions table above, whose header lists `p1_p`…`p12_p`; the payload
+    SHA-256 is the same.
+
+The spread in tokens/s (2.61–2.93) and TTFT (7.7–9.9 s) is run-to-run noise on the same CPU: all four models do the same arithmetic over the same payload. RSS stays at 2.12 GB because the whole 2.39 GB payload is mapped and touched during the three prompts. `q*` and `p_p` are independent: `q*` fixes the bits per weight, `p_p` fixes how many subparameters each tensor is cut into.
+
 ### Router and routes
 
 Taxonomy of 8 worlds in `worlds/olmoe.json` (code, math, cooking, travel, health, law, science, languages). The tiny router is trained with labeled examples; the novelty gate uses centroids and a noise class.
@@ -340,6 +452,7 @@ Taxonomy of 8 worlds in `worlds/olmoe.json` (code, math, cooking, travel, health
 |---|---|
 | Held-out accuracy (24 reserved examples) | 23/24 = 95.8% |
 | Query "write a Python function…" | world `codigo`, p=88.2% |
+| Query "rust error" | world `codigo`, p=89.0% |
 | Nonsensical query | incomplete mode, similarity 0.05 |
 | World plan (16 experts/layer) | 774.3 MB of 2.39 GB = 31.7% |
 | RAM after loading the plan | 28.2 MB → 840.2 MB |
@@ -350,6 +463,51 @@ Taxonomy of 8 worlds in `worlds/olmoe.json` (code, math, cooking, travel, health
 | `chat --mask-all` (diagnostic) | 64 experts/layer · RSS 1.83 GB |
 
 The experts per layer were measured with `examples/experts.rs`, which runs the real OLMoE router on examples from each world. The worlds share many experts: OLMoE has no clean separation by topic, so per-layer masks are the honest label, not an arbitrary partition.
+
+!!! info "What a router percentage measures (the published 89%)"
+
+    The figures `p=88.2%`, `Code 88%` and **`89%`** are the linear router's
+    **confidence for one concrete prompt**, not a model quality metric. They
+    are reproducible and prompt-dependent:
+    `cabrita route ../out/olmoe-q2_k-p1_p.ukj --worlds ../worlds/olmoe.json --text "rust error"`
+    prints `mundo: codigo … p=89.0%` with the candidate list
+    (`codigo 89% · cocina 3% · idiomas 2% · derecho 2%`). The 89% shown in the
+    TikTok videos is exactly this value for the prompt `rust error`, and the
+    same line appears in the real `cabrita chat` capture. The held-out router
+    accuracy above (95.8%) is the separate, model-level quality figure.
+
+### OpenAI-compatible API, GUI and distribution
+
+| Check | Result |
+|---|---|
+| Endpoints | `/v1/models`, `/v1/chat/completions` (JSON and SSE), `/v1/completions` (JSON and SSE), `/health`, `/api/status`, `/api/worlds`, `/api/worlds/deploy`, `/api/worlds/retrain`, embedded GUI at `/` |
+| Integration test | `cli_serve_openai_and_gui`: models, chat, streaming, completions, 401 without key, GUI HTML, world list, deploy and retrain |
+| HTTPS | `--tls-cert`/`--tls-key` with rustls 0.23; `curl -k https://127.0.0.1:18443/api/status` returns JSON |
+| `/api/status` on the fixture | `{"ctx":64,"density":"p8_p","experts":2,"heads":1,"hidden":4,"layers":1,"model":"tiny-olmoe-p8_p","payload_bytes":9344,"rss_mb":17.19,"top_k":1,"uptime_s":31}` |
+| AppImage | `dist/Cabrita-0.1.0-x86_64.AppImage`, 5.1 MB; `--version` → `cabrita 0.1.0` |
+| Windows `.exe` | `dist/cabrita.exe`, 21 MB, PE32+; imports only `kernel32`, `msvcrt`, `user32`, `d3dcompiler_47`… (no mingw runtime DLLs) |
+
+The server is single-threaded over a plain `TcpListener`: each request is served
+in order, which keeps the KV cache and the loaded world consistent.
+
+!!! warning "`--api-key` protects only `/v1/*`; `/api/*` stays open and CORS is `*`"
+
+    `--api-key` gates **only** `/v1/*`. `GET /api/status`, `POST
+    /api/worlds/deploy` and `POST /api/worlds/retrain` answer **without any
+    key**, and **every** response carries
+    `Access-Control-Allow-Origin: *`. While `cabrita serve` runs, any web page
+    open in the same browser can read the server state and deploy or retrain
+    worlds. The default bind address is `127.0.0.1`, so the exposure is local
+    unless the port is published; do not expose it to a network you do not
+    trust.
+
+!!! note "The Windows `.exe` was never executed"
+
+    `dist/cabrita.exe` is validated only as a binary: PE32+ header,
+    architecture and imported DLLs (`kernel32`, `msvcrt`, `user32`,
+    `d3dcompiler_47`…). The build machine has neither Windows nor Wine, so no
+    one has run it or its GUI/API on Windows. The AppImage, in contrast, was
+    run: `--version` and `serve --help`.
 
 ### Tics, `continue parameter` and Vulkan
 
@@ -368,9 +526,9 @@ Vulkan does not accelerate this OLMoE on Renoir: the bottleneck is the bandwidth
 
 ## 8. Interoperability and tests
 
-- `converter/tests/` (Python, `unittest`): 17 tests of densities, `p1_p`, `p3_p`, `p5_p`, roundtrip, header, `.subs`, rejection of invalid files and `--continue-irregular`.
-- `rust/tests/ukj.rs`: 8 tests of parser, `inspect`, extraction, verification, repair, desync, rejection and automatic routing of `chat` (world chosen and incomplete mode).
-- `rust/src/*` (19 tests): dequantization, matvec, tokenizer, RMSNorm, RoPE, sampler, router, route planes, tics/transitions, operator log and `continue parameter`.
+- `converter/tests/` (Python, `unittest`): 18 tests of densities, `p1_p`, `p3_p`, `p5_p`, roundtrip, header, `.subs`, rejection of invalid files, `--continue-irregular` and density re-splitting.
+- `rust/tests/ukj.rs`: 16 tests of parser, `inspect`, extraction, verification, repair, desync, truncation, world backup/restore/retrain, checkpoints, evaluation, OpenAI server/GUI and automatic routing of `chat` (world chosen, missing world and incomplete mode).
+- `rust/src/*` (26 tests): dequantization, matvec, tokenizer, RMSNorm, RoPE, sampler, router, route planes, tics/transitions, operator log, checkpoints, evaluation, embedded GUI and `continue parameter`.
 - Independent reference: `ref_olmoe.py` (numpy, without llama.cpp) compares the Rust engine logits tensor to tensor.
 - The `.subs` generated by Python is verified with Rust and vice versa; tested with the fixture and with real OLMoE.
 - Small fixtures: `rust/tests/fixtures/tiny.gguf`, `tiny.ukj`, `tiny.subs` and `out/tiny-olmoe-p8-continue.ukj` for reassembly.
