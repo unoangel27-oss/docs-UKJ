@@ -7,6 +7,13 @@ runtime.
 This repository holds documentation only. The converter and the native Rust
 runtime live in [Cabrita](https://github.com/unoangel27-oss/Cabrita).
 
+The documentation covers the UKJ v1 container format and the Cabrita runtime.
+The current version also describes the Phase 1 work: integrity (checkpoints
+with rollback and `world backup|restore|retrain`), the public benchmarks (the
+`p1_p`…`p12_p` degradation experiment that fixes `p8_p` as the official
+ceiling, and the full conversions of `p1_p`…`p8_p`), and the
+OpenAI-compatible server with its embedded GUI and world editor.
+
 ## Layout
 
 All source pages are flat files in `docs/` (no nested page folders):
