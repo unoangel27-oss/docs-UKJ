@@ -17,7 +17,6 @@ All source pages are flat files in `docs/` (no nested page folders):
 - `ukj-spec-v1.md`, `identidad.md`, `archivos.md`, `jerarquia.md`,
   `operadores.md`, `cuantizacion.md`, `runtime.md`, `decisiones.md`,
   `pendientes.md`: the UKJ v1 specification.
-- `fases.md`: phase plan (Phase 0 prototype, Phase 1 iterations, Phase 2 maturity).
 - `assets/`: rounded logo and favicon used by the site header.
 
 ## Build

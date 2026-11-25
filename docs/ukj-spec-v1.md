@@ -1,8 +1,7 @@
 # UKJ + Cabrita — Specification v1
 
 > Source: 120-question questionnaire (round 1), 75 questions (round 2) and the contradictions resolved on 2026-11-22.
-> Status: **v1 for user approval and @Auditor review before publishing.**
-> Team rule: this project lives in `/home/angel/Documentos/ukj-cabrita/`.
+> Status: **v1 for user approval and review before publishing.**
 
 ---
 
@@ -75,7 +74,7 @@ The two operators are **independent** (they do not form a pair; the reversibilit
 - **Loading:** streaming without loading all into RAM, per route; `.subs` dormant until activation. A 200 GB model does not consume 200 GB: only the activated piece.
 - **Metrics:** tokens/s, RAM, latency; public benchmark in F1.2.
 
-## 6. Decisions taken by the Ideador (the 21 blanks + pending)
+## 6. Decisions taken (the 21 blanks + pending)
 
 | # | Question | Decision |
 |---|---|---|
@@ -98,10 +97,10 @@ The two operators are **independent** (they do not form a pair; the reversibilit
 | D51 | Blocks | GGUF inherited only for `q*` |
 | D52 | Metadata | `.ukj` header (see §4) |
 | D53 | `p_p` in routes | **Yes**, overrides subtree |
-| D54 | Spec | Ideador drafts `p1_p`, **user approves**, Auditor reviews before publishing |
+| D54 | Spec | Drafted `p1_p`, **user approves**, review before publishing |
 | D55 | Above `p8_p` | F1.2 experiment (see §4) |
 | M4 | Schema | **Yes**: mandatory minimum header |
-| M5 | Owner | Spec = Ideador → Documentador publishes; implementation = Developer; layout neutral |
+| M5 | Owner | Spec → published docs; implementation separate; layout neutral |
 | M6 | Tic threshold | Defaults in spec (2/s, 20/s), calibratable by Cabrita |
 | — | Same-name nodes | **Merge** (round-1 answer retained) |
 

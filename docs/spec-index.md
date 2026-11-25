@@ -1,7 +1,7 @@
 # UKJ + Cabrita — Specification v1
 
 > Source: 120-question questionnaire (round 1), 75 questions (round 2) and the contradictions resolved on 2026-11-22.
-> Status: **v1 for user approval and @Auditor review before publishing.**
+> Status: **v1 for user approval and review before publishing.**
 
 ## Content
 
@@ -22,6 +22,3 @@
 - **`.subs`**: working copy of subparameters (Cabrita system folder).
 - **`.mem`**: conversation memory (phase 2 / toji).
 
-## Project rule
-
-This project lives in `/home/angel/Documentos/ukj-cabrita/` and follows the team flow: User ↔ Ideador & Planificador → Documentador → Desarrollador → Auditor → Gestionador → Scriptwriter & Editor → Gestionador (TikTok).

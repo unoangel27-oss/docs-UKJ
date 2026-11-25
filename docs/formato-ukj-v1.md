@@ -328,7 +328,7 @@ Own engine in `rust/src/model.rs`, `quant.rs`, `tokenizer.rs` and `chat.rs`: mma
 | `p5_p` chat | prefill ~8.5 s · decode 3.1 tok/s · RSS ~1.4 GB |
 | KV cache | 32 MB at ctx 128 (128 MB at ctx 512) |
 
-RSS measured with `/usr/bin/time -v`; the old 1.88 GB figure does not reproduce and was corrected after independent verification by the Ideador.
+RSS measured with `/usr/bin/time -v`; the old 1.88 GB figure does not reproduce and was corrected after independent verification.
 
 `p1_p`, `p3_p` and `p5_p` share the payload byte for byte; `pN_p` only changes the subparameter splitting, not the weights.
 

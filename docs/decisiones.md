@@ -1,6 +1,6 @@
 # Decisions — §6
 
-Decisions taken by the Ideador (the 21 blanks + pending).
+Decisions taken (the 21 blanks + pending).
 
 ## Table
 
@@ -25,9 +25,9 @@ Decisions taken by the Ideador (the 21 blanks + pending).
 | D51 | Blocks: GGUF inherited only for `q*` |
 | D52 | Metadata: `.ukj` header (see §4) |
 | D53 | `p_p` in routes: **Yes**, overrides subtree |
-| D54 | Spec: Ideador drafts `p1_p`, **user approves**, Auditor reviews before publishing |
+| D54 | Spec: drafted `p1_p`, **user approves**, review before publishing |
 | D55 | Above `p8_p`: F1.2 experiment (see §4) |
 | M4 | Schema: **Yes**: mandatory minimum header |
-| M5 | Owner: Spec = Ideador → Documentador publishes; implementation = Developer; layout neutral |
+| M5 | Owner: Spec → published docs; implementation separate; layout neutral |
 | M6 | Tic threshold: defaults in spec (2/s, 20/s), calibratable by Cabrita |
 | — | Same-name nodes: **Merge** (round-1 answer retained) |
