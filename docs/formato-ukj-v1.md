@@ -323,7 +323,7 @@ python3 scripts/check_full_conversions.py --gguf ../olmoe-q2_k.gguf \
   --backend vulkan --vulkan-cache-mb 4096
 ```
 
-`--subs-dir` changes the model root (by default `~/.cabrita/models`). `cabrita verify --quick` omits the payload SHA-256. `cabrita chat` uses mmap and dequantizes per block: there is no full model copy in RAM. `chat` trains the router with `--worlds` (by default it looks for `worlds/olmoe.json` or `../worlds/olmoe.json`) and masks the experts of the chosen world; if the text does not exceed the threshold, it warns and uses the base model. `--world` forces a world; `--mask-all` and `--no-renorm` are diagnostics. `--tics` activates the tic engine and `--log` writes `<model>.ops.jsonl`; `inspect --log` shows it. `--backend vulkan` is explicit and `--vulkan-cache-mb` limits the GPU weight cache. `cabrita world backup` copies the taxonomy with a SHA-256 manifest; `world restore` validates the backup and rolls back to `<worlds>/checkpoints` on failure; `world retrain` trains the linear router and writes `<worlds>.router.json`. `cabrita serve` exposes `/v1/models`, `/v1/chat/completions` and `/v1/completions` plus an embedded GUI at `/`; the GUI lists worlds, opens a world and deploys its expert ranges. HTTPS is enabled with `--tls-cert`/`--tls-key`, and `--api-key` protects `/v1/*`.
+`--subs-dir` changes the model root (by default `~/.cabrita/models`). `cabrita verify --quick` omits the payload SHA-256. `cabrita chat` uses mmap and dequantizes per block: there is no full model copy in RAM. `chat` trains the router with `--worlds` (by default it looks for `worlds/olmoe.json` or `../worlds/olmoe.json`) and masks the experts of the chosen world; if the text does not exceed the threshold, it warns and uses the base model. `--world` forces a world; `--mask-all` and `--no-renorm` are diagnostics. `--tics` activates the tic engine and `--log` writes `<model>.ops.jsonl`; `inspect --log` shows it. `--backend vulkan` is explicit and `--vulkan-cache-mb` limits the GPU weight cache. `cabrita world backup` copies the taxonomy with a SHA-256 manifest; `world restore` validates the backup and rolls back to `<worlds>/checkpoints` on failure; `world retrain` trains the linear router and writes `<worlds>.router.json`. `cabrita serve` exposes `/v1/models`, `/v1/chat/completions` and `/v1/completions` plus an embedded GUI at `/`; the GUI lists worlds, opens a world and deploys its expert ranges. HTTPS is enabled with `--tls-cert`/`--tls-key`, and `--api-key` protects `/v1/*` and `/api/*`.
 
 ## 7. Real results (OLMoE q2_K)
 
@@ -488,18 +488,20 @@ The experts per layer were measured with `examples/experts.rs`, which runs the r
 | Windows `.exe` | `dist/cabrita.exe`, 21 MB, PE32+; imports only `kernel32`, `msvcrt`, `user32`, `d3dcompiler_47`… (no mingw runtime DLLs) |
 
 The server is single-threaded over a plain `TcpListener`: each request is served
-in order, which keeps the KV cache and the loaded world consistent.
+in order, which keeps the KV cache and the loaded world consistent, and every
+socket carries a 30 s read/write timeout so an idle client cannot block the GUI
+and the API.
 
-!!! warning "`--api-key` protects only `/v1/*`; `/api/*` stays open and CORS is `*`"
+!!! warning "Security: what `--api-key` covers"
 
-    `--api-key` gates **only** `/v1/*`. `GET /api/status`, `POST
-    /api/worlds/deploy` and `POST /api/worlds/retrain` answer **without any
-    key**, and **every** response carries
-    `Access-Control-Allow-Origin: *`. While `cabrita serve` runs, any web page
-    open in the same browser can read the server state and deploy or retrain
-    worlds. The default bind address is `127.0.0.1`, so the exposure is local
-    unless the port is published; do not expose it to a network you do not
-    trust.
+    With `--api-key`, `/v1/*` **and** `/api/*` require
+    `Authorization: Bearer <key>`. Only the GUI (`/`) and `/health` answer
+    without a key, and the GUI receives the key so its own calls work. CORS
+    headers are returned only to the instance's own origin (`Origin` must
+    equal `scheme://Host`): a page from another site gets no
+    `Access-Control-Allow-Origin`, cannot read responses and cannot pass the
+    preflight of `POST /api/worlds/deploy` or `/api/worlds/retrain`. The
+    default bind address is `127.0.0.1`: keep it local.
 
 !!! note "The Windows `.exe` was never executed"
 

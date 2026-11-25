@@ -9,14 +9,15 @@ subparameters, routes/worlds, operators and `p_p` quantization.
 - **Cabrita** is the runtime: local, offline, no telemetry, OpenAI-compatible HTTP
   API, MIT license.
 
-!!! danger "Security: `--api-key` protects only `/v1/*`"
+!!! warning "Security: what `--api-key` covers"
 
-    With `cabrita serve`, `--api-key` gates **only** `/v1/*`.
-    `/api/status`, `/api/worlds/deploy` and `/api/worlds/retrain` answer
-    **without a key**, and **every** response sends
-    `Access-Control-Allow-Origin: *`. Any web page open in your browser can
-    call them while the server runs. The default bind address is `127.0.0.1`;
-    keep it local and do not publish the port.
+    With `--api-key`, `/v1/*` **and** `/api/*` require
+    `Authorization: Bearer <key>`. Only the GUI (`/`) and `/health` answer
+    without a key, and the GUI receives the key so its own calls work. CORS
+    headers go only to the instance's own origin (`Origin` must equal
+    `scheme://Host`), so a page from another site cannot read the responses
+    nor pass the preflight of the POST routes. The default bind address is
+    `127.0.0.1`: keep it local.
 
 ## Sections
 
